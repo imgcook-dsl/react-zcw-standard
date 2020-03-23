@@ -40,6 +40,74 @@ module.exports = function(schema, option) {
     return String(value);
   };
 
+  // flexDirection -> flex-direction
+  const parseCamelToLine = (string) => {
+    return string.split(/(?=[A-Z])/).join('-').toLowerCase();
+  }
+
+  // className structure support
+  const generateScss = (schema, style) => {
+    let scss = '';
+
+    function walk(json) {
+      if(json.props.className) {
+        let className = json.props.className;
+        scss += `.${className} {`;
+
+        scss += parseScss(style[className]);
+      }
+
+      if(json.children && json.children.length > 0) {
+        json.children.forEach(child => walk(child));
+      }
+
+      if(json.props.className) {
+        scss += '}';
+      }
+    }
+
+    walk(schema);
+
+    return scss;
+  }
+
+  // convert to responsive unit, such as vw
+  const parseScss = (style) => {
+    let css = '';
+    for (let key in style) {
+      switch (key) {
+        case 'fontSize':
+        case 'marginTop':
+        case 'marginBottom':
+        case 'paddingTop':
+        case 'paddingBottom':
+        case 'height':
+        case 'top':
+        case 'bottom':
+        case 'width':
+        case 'maxWidth':
+        case 'left':
+        case 'right':
+        case 'paddingRight':
+        case 'paddingLeft':
+        case 'marginLeft':
+        case 'marginRight':
+        case 'lineHeight':
+        case 'borderBottomRightRadius':
+        case 'borderBottomLeftRadius':
+        case 'borderTopRightRadius':
+        case 'borderTopLeftRadius':
+        case 'borderRadius':
+          css += `${parseCamelToLine(key)}: ${(parseInt(style[key]) / 2).toFixed(2)}px;\n`
+          break;
+        default:
+          css += `${parseCamelToLine(key)}: ${style[key]};\n`
+          break;
+      }
+    }
+    return css;
+  }
+
   // convert to responsive unit, such as vw
   const parseStyle = (style) => {
     for (let key in style) {
@@ -201,10 +269,12 @@ module.exports = function(schema, option) {
   const generateRender = (schema) => {
     const type = schema.componentName.toLowerCase();
     const className = schema.props && schema.props.className;
-    const classString = className ? ` style={styles.${className}}` : '';
+    const classString = className ? ` className="${className}"` : '';
+    // const classString = className ? ` style={styles.${className}}` : '';
 
     if (className) {
-      style[className] = parseStyle(schema.props.style);
+      // style[className] = parseStyle(schema.props.style);
+      style[className] = schema.props.style;
     }
 
     let xml;
@@ -228,6 +298,7 @@ module.exports = function(schema, option) {
       case 'div':
       case 'page':
       case 'block':
+      case 'component':
         if (schema.children && schema.children.length) {
           xml = `<div${classString}${props}>${transform(schema.children)}</div>`;
         } else {
@@ -260,7 +331,7 @@ module.exports = function(schema, option) {
     } else {
       const type = schema.componentName.toLowerCase();
 
-      if (['page', 'block'].indexOf(type) !== -1) {
+      if (['page', 'block', 'component'].indexOf(type) !== -1) {
         // 容器组件处理: state/method/dataSource/lifeCycle/render
         const states = [];
         const lifeCycles = [];
@@ -346,18 +417,23 @@ module.exports = function(schema, option) {
   return {
     panelDisplay: [
       {
-        panelName: `index.jsx`,
+        panelName: `index.tsx`,
         panelValue: prettier.format(`
           'use strict';
 
           import React, { Component } from 'react';
           ${imports.join('\n')}
-          import styles from './style.js';
+          import './index.scss';
           ${utils.join('\n')}
           ${classes.join('\n')}
           export default ${schema.componentName}_0;
         `, prettierOpt),
         panelType: 'js',
+      },
+      {
+        panelName: `index.scss`,
+        panelValue: prettier.format(generateScss(schema, style), { parser: 'less' }),
+        panelType: 'less'
       },
       {
         panelName: `style.js`,
