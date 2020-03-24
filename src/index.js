@@ -293,7 +293,9 @@ module.exports = function(schema, option) {
         break;
       case 'image':
         const source = parseProps(schema.props.src);
-        xml = `<img${classString}${props} src={${source}} />`;
+        const fileName = schema.id.toLowerCase();
+        imports.push(`import ${fileName} from ${source}`);
+        xml = `<img${classString}${props} src={${fileName}} />`;
         break;
       case 'div':
       case 'page':
@@ -423,8 +425,11 @@ module.exports = function(schema, option) {
           'use strict';
 
           import React, { Component } from 'react';
+
           ${imports.join('\n')}
+
           import './index.scss';
+          
           ${utils.join('\n')}
           ${classes.join('\n')}
           export default ${schema.componentName}_0;
