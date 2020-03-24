@@ -340,13 +340,16 @@ module.exports = function(schema, option) {
         const render = [`render(){ return (`];
         let classData = [`class ${schema.componentName}_${classes.length} extends Component {`];
 
+        console.log(schema.state);
         if (schema.state) {
+          // states.push(`const [state, setState] = useState(${toString(schema.state)})`);
           states.push(`state = ${toString(schema.state)}`);
         }
 
         if (schema.methods) {
           Object.keys(schema.methods).forEach((name) => {
             const { params, content } = parseFunction(schema.methods[name]);
+            console.log(params)
             methods.push(`${name}(${params}) {${content}}`);
           });
         }
@@ -434,11 +437,6 @@ module.exports = function(schema, option) {
         panelName: `index.scss`,
         panelValue: prettier.format(generateScss(schema, style), { parser: 'less' }),
         panelType: 'less'
-      },
-      {
-        panelName: `style.js`,
-        panelValue: prettier.format(`export default ${toString(style)}`, prettierOpt),
-        panelType: 'js'
       }
     ],
     noTemplate: true
